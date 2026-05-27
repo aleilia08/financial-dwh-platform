@@ -305,19 +305,17 @@ The MCP server currently exposes the following tools:
 
 ## Screenshots
 
-Add your project screenshots here to showcase the API, analytics outputs, and MCP workflows.
+### API
 
-### API Dashboard
+![FastAPI Swagger UI](docs/screenshots/api-swagger-ui.png)
 
-![API Dashboard](docs/screenshots/api-dashboard.png)
+### Analytics
 
-### Analytics Results
+![Analytics response](docs/screenshots/analytics-response.png)
 
-![Analytics Results](docs/screenshots/analytics-results.png)
+### MCP
 
-### MCP Tool Calling
-
-![MCP Tool Calling](docs/screenshots/mcp-tools.png)
+![MCP explain_change response](docs/screenshots/mcp-explain-change.png)
 
 ## Future Improvements
 
