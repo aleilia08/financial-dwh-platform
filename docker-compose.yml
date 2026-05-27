@@ -1,0 +1,16 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: financial-mongodb
+
+    ports:
+      - "27017:27017"
+
+    environment:
+      MONGO_INITDB_DATABASE: financial_dwh
+
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+pandas
+numpy
+python-dotenv
+requests
+pyspark
+scikit-learn
+yfinance 
