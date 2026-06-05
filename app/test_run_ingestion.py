@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 
 from app.ingestion import run_ingestion
 
@@ -112,3 +113,48 @@ def test_ingest_loads_assets_and_time_series(monkeypatch, capsys):
     ]
     assert "Ingestion completed." in captured
     assert "Total stored time-series records: 3" in captured
+
+
+def test_ingest_rejects_invalid_asset_config(monkeypatch):
+    monkeypatch.setattr(run_ingestion, "ASSETS", [{"asset_id": "AAPL"}])
+
+    try:
+        run_ingestion.ingest()
+    except ValueError as exc:
+        assert "Invalid asset field" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for invalid asset configuration")
+
+
+def test_ingest_skips_malformed_market_rows(monkeypatch, capsys):
+    asset_repo = FakeAssetRepository()
+    source_repo = FakeDataSourceRepository()
+    time_series_repo = FakeTimeSeriesRepository()
+
+    monkeypatch.setattr(run_ingestion, "AssetRepository", lambda: asset_repo)
+    monkeypatch.setattr(run_ingestion, "DataSourceRepository", lambda: source_repo)
+    monkeypatch.setattr(run_ingestion, "TimeSeriesRepository", lambda: time_series_repo)
+    monkeypatch.setattr(
+        run_ingestion.yf,
+        "download",
+        lambda asset_id, period, interval, progress: FakeDownloadFrame([
+            (datetime(2026, 6, 1), {"Open": 100.0, "High": 110.0, "Low": 95.0, "Close": 105.0, "Volume": 1000}),
+            (datetime(2026, 6, 2), {"Open": 105.0, "High": 112.0, "Low": 101.0, "Close": math.nan, "Volume": 1200}),
+        ])
+    )
+    monkeypatch.setattr(run_ingestion, "ASSETS", [{
+        "asset_id": "AAPL",
+        "name": "Apple Inc.",
+        "type": "stock",
+        "region": "US",
+        "currency": "USD",
+    }])
+    monkeypatch.setattr(run_ingestion, "datetime", FakeDatetime)
+
+    run_ingestion.ingest()
+
+    captured = capsys.readouterr().out
+
+    assert len(time_series_repo.created_records) == 1
+    assert time_series_repo.created_records[0]["business_date"] == "2026-06-01"
+    assert "Total stored time-series records: 1" in captured

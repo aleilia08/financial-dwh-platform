@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 import yfinance as yf
 
 from app.dal.asset_repository import AssetRepository
@@ -31,10 +32,64 @@ ASSETS = [
 ]
 
 
+REQUIRED_ASSET_FIELDS = ("asset_id", "name", "type", "region", "currency")
+REQUIRED_PRICE_FIELDS = ("Open", "High", "Low", "Close", "Volume")
+
+
+def _validate_asset(asset):
+    if not isinstance(asset, dict):
+        raise ValueError("Asset configuration must be a dictionary")
+
+    validated_asset = {}
+
+    for field in REQUIRED_ASSET_FIELDS:
+        value = asset.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Invalid asset field: {field}")
+        validated_asset[field] = value.strip()
+
+    return validated_asset
+
+
+def _sanitize_market_row(asset_id, index, row):
+    values = {}
+
+    try:
+        for field in REQUIRED_PRICE_FIELDS:
+            raw_value = row[field]
+            if raw_value is None:
+                return None
+
+            if field == "Volume":
+                numeric_value = float(raw_value)
+                if not math.isfinite(numeric_value):
+                    return None
+                values["volume"] = int(numeric_value)
+            else:
+                numeric_value = float(raw_value)
+                if not math.isfinite(numeric_value):
+                    return None
+                values[field.lower()] = numeric_value
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    if not hasattr(index, "strftime"):
+        return None
+
+    return {
+        "asset_id": asset_id,
+        "source_id": "yfinance",
+        "business_date": index.strftime("%Y-%m-%d"),
+        "values": values,
+    }
+
+
 def ingest():
     asset_repo = AssetRepository()
     source_repo = DataSourceRepository()
     time_series_repo = TimeSeriesRepository()
+
+    validated_assets = [_validate_asset(asset) for asset in ASSETS]
 
     source = {
         "source_id": "yfinance",
@@ -49,7 +104,7 @@ def ingest():
 
     total_records = 0
 
-    for asset in ASSETS:
+    for asset in validated_assets:
         asset_repo.create_asset(asset)
 
         print(f"\nFetching data for {asset['asset_id']}...")
@@ -62,18 +117,9 @@ def ingest():
         )
 
         for index, row in data.iterrows():
-            record = {
-                "asset_id": asset["asset_id"],
-                "source_id": "yfinance",
-                "business_date": index.strftime("%Y-%m-%d"),
-                "values": {
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": int(row["Volume"])
-                }
-            }
+            record = _sanitize_market_row(asset["asset_id"], index, row)
+            if record is None:
+                continue
 
             time_series_repo.create_time_series_record(record)
             total_records += 1
