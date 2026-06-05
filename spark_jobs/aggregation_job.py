@@ -1,3 +1,4 @@
+from app.dal.mongo_connection import db
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import avg, min, max, count
 
@@ -7,16 +8,18 @@ spark = (
     .getOrCreate()
 )
 
+records = list(db.time_series.find())
+
 data = [
-    ("AAPL", 308.3),
-    ("AAPL", 304.9),
-    ("AAPL", 302.1),
-    ("MSFT", 512.1),
-    ("MSFT", 510.2),
-    ("BTC-USD", 109000.0)
+    {
+        "asset_id": record["asset_id"],
+        "close": record["values"]["close"]
+    }
+    for record in records
+    if record.get("asset_id") and record.get("values", {}).get("close") is not None
 ]
 
-df = spark.createDataFrame(data, ["asset_id", "close"])
+df = spark.createDataFrame(data)
 
 result = (
     df.groupBy("asset_id")

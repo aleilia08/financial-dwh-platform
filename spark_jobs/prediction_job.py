@@ -1,3 +1,4 @@
+from app.dal.mongo_connection import db
 from pyspark.sql import SparkSession
 
 spark = (
@@ -6,17 +7,25 @@ spark = (
     .getOrCreate()
 )
 
+records = list(
+    db.time_series.find(
+        {"asset_id": "AAPL"}
+    ).sort("business_date", -1)
+)
+
 data = [
-    ("AAPL", 300.1),
-    ("AAPL", 302.5),
-    ("AAPL", 305.7),
-    ("AAPL", 308.3)
+    {
+        "asset_id": record["asset_id"],
+        "close": record["values"]["close"]
+    }
+    for record in records
+    if record.get("values", {}).get("close") is not None
 ]
 
-df = spark.createDataFrame(data, ["asset_id", "close"])
+df = spark.createDataFrame(data)
 
 latest_close = (
-    df.collect()[-1]["close"]
+    df.collect()[0]["close"]
 )
 
 predicted_close = latest_close * 1.01
