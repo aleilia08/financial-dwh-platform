@@ -1,5 +1,6 @@
 from datetime import datetime
 import math
+import logging
 import yfinance as yf
 
 from app.dal.asset_repository import AssetRepository
@@ -34,6 +35,8 @@ ASSETS = [
 
 REQUIRED_ASSET_FIELDS = ("asset_id", "name", "type", "region", "currency")
 REQUIRED_PRICE_FIELDS = ("Open", "High", "Low", "Close", "Volume")
+
+logger = logging.getLogger(__name__)
 
 
 def _validate_asset(asset):
@@ -100,28 +103,54 @@ def ingest():
         "fetch_time": datetime.utcnow()
     }
 
-    source_repo.create_data_source(source)
+    try:
+        source_repo.create_data_source(source)
+    except Exception as exception:
+        logger.exception("Failed to create data source")
+        raise RuntimeError("Unable to register ingestion source") from exception
 
     total_records = 0
 
     for asset in validated_assets:
-        asset_repo.create_asset(asset)
+        try:
+            asset_repo.create_asset(asset)
+        except Exception as exception:
+            logger.exception("Failed to create asset %s", asset["asset_id"])
+            continue
 
         print(f"\nFetching data for {asset['asset_id']}...")
 
-        data = yf.download(
-            asset["asset_id"],
-            period="2y",
-            interval="1d",
-            progress=False
-        )
+        try:
+            data = yf.download(
+                asset["asset_id"],
+                period="2y",
+                interval="1d",
+                progress=False
+            )
+        except Exception as exception:
+            logger.exception("Failed to download data for %s", asset["asset_id"])
+            print(f"Skipping {asset['asset_id']} due to download error")
+            continue
+
+        if not hasattr(data, "iterrows"):
+            print(f"Skipping {asset['asset_id']} due to invalid data response")
+            continue
 
         for index, row in data.iterrows():
             record = _sanitize_market_row(asset["asset_id"], index, row)
             if record is None:
                 continue
 
-            time_series_repo.create_time_series_record(record)
+            try:
+                time_series_repo.create_time_series_record(record)
+            except Exception as exception:
+                logger.exception(
+                    "Failed to store time-series record for %s on %s",
+                    asset["asset_id"],
+                    record["business_date"]
+                )
+                continue
+
             total_records += 1
 
         print(f"Stored {len(data)} records for {asset['asset_id']}")

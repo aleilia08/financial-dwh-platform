@@ -158,3 +158,47 @@ def test_ingest_skips_malformed_market_rows(monkeypatch, capsys):
     assert len(time_series_repo.created_records) == 1
     assert time_series_repo.created_records[0]["business_date"] == "2026-06-01"
     assert "Total stored time-series records: 1" in captured
+
+
+def test_ingest_continues_when_one_asset_download_fails(monkeypatch, capsys):
+    asset_repo = FakeAssetRepository()
+    source_repo = FakeDataSourceRepository()
+    time_series_repo = FakeTimeSeriesRepository()
+
+    monkeypatch.setattr(run_ingestion, "AssetRepository", lambda: asset_repo)
+    monkeypatch.setattr(run_ingestion, "DataSourceRepository", lambda: source_repo)
+    monkeypatch.setattr(run_ingestion, "TimeSeriesRepository", lambda: time_series_repo)
+    monkeypatch.setattr(
+        run_ingestion.yf,
+        "download",
+        lambda asset_id, period, interval, progress: (
+            FakeDownloadFrame([
+                (datetime(2026, 6, 1), {"Open": 100.0, "High": 110.0, "Low": 95.0, "Close": 105.0, "Volume": 1000})
+            ]) if asset_id == "AAPL" else (_ for _ in ()).throw(RuntimeError("download failed"))
+        )
+    )
+    monkeypatch.setattr(run_ingestion, "ASSETS", [
+        {
+            "asset_id": "AAPL",
+            "name": "Apple Inc.",
+            "type": "stock",
+            "region": "US",
+            "currency": "USD",
+        },
+        {
+            "asset_id": "MSFT",
+            "name": "Microsoft Corporation",
+            "type": "stock",
+            "region": "US",
+            "currency": "USD",
+        },
+    ])
+    monkeypatch.setattr(run_ingestion, "datetime", FakeDatetime)
+
+    run_ingestion.ingest()
+
+    captured = capsys.readouterr().out
+
+    assert [record["asset_id"] for record in time_series_repo.created_records] == ["AAPL"]
+    assert "Skipping MSFT due to download error" in captured
+    assert "Total stored time-series records: 1" in captured

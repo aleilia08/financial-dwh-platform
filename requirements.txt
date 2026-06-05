@@ -9,3 +9,4 @@ pyspark
 scikit-learn
 yfinance 
 pytest
+httpx
