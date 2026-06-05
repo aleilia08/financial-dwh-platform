@@ -193,7 +193,7 @@ Both jobs read their input from MongoDB and can be run directly from the reposit
 python spark_jobs/aggregation_job.py
 ```
 
-This job demonstrates grouped aggregation over financial close prices loaded from MongoDB.
+This job demonstrates grouped aggregation over financial close prices loaded from MongoDB and saves the aggregated output back to `analytics_results`.
 
 ### Prediction job
 
@@ -201,7 +201,7 @@ This job demonstrates grouped aggregation over financial close prices loaded fro
 python spark_jobs/prediction_job.py
 ```
 
-This job demonstrates a simple next-value prediction workflow over MongoDB time series data.
+This job demonstrates a simple next-value prediction workflow over MongoDB time series data and saves the prediction back to `prediction_results`.
 
 > If you use a Spark distribution locally, you can also run these jobs with `spark-submit`.
 
@@ -331,7 +331,7 @@ The MCP server currently exposes the following tools:
 ## Future Improvements
 
 - Add authentication and authorization for API endpoints
-- Replace demo Spark logic with production-grade batch pipelines
+- Extend Spark jobs into production-grade batch pipelines
 - Add orchestration for ingestion and job scheduling
 - Introduce automated tests for all API and MCP routes
 - Add data quality checks and schema validation
