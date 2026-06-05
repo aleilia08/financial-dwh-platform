@@ -185,6 +185,7 @@ The MCP server exposes callable tools through the `/tool/{tool_name}` endpoint.
 ## Run Spark Jobs
 
 The repository contains two example PySpark jobs in `spark_jobs/`.
+Both jobs read their input from MongoDB and can be run directly from the repository root.
 
 ### Aggregation job
 
@@ -192,7 +193,7 @@ The repository contains two example PySpark jobs in `spark_jobs/`.
 python spark_jobs/aggregation_job.py
 ```
 
-This job demonstrates grouped aggregation over financial close prices.
+This job demonstrates grouped aggregation over financial close prices loaded from MongoDB.
 
 ### Prediction job
 
@@ -200,7 +201,7 @@ This job demonstrates grouped aggregation over financial close prices.
 python spark_jobs/prediction_job.py
 ```
 
-This job demonstrates a simple next-value prediction workflow.
+This job demonstrates a simple next-value prediction workflow over MongoDB time series data.
 
 > If you use a Spark distribution locally, you can also run these jobs with `spark-submit`.
 
