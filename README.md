@@ -205,6 +205,16 @@ This job demonstrates a simple next-value prediction workflow over MongoDB time 
 
 > If you use a Spark distribution locally, you can also run these jobs with `spark-submit`.
 
+## Run Tests
+
+The repository now includes assertion-based tests powered by `pytest`.
+
+```bash
+pytest
+```
+
+These tests mock MongoDB access so they can run without a live database.
+
 ## Example API Endpoints
 
 ### Assets
