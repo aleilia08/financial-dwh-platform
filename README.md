@@ -30,6 +30,8 @@ The platform ingests financial assets from Yahoo Finance through `yfinance`, sto
 - Asset comparison
 - Spark aggregation and prediction jobs
 - MCP server with tool calling
+- Input validation and sanitization for ingestion records
+- API error handling with clear `404` and `500` responses
 
 ## Architecture Overview
 
@@ -214,6 +216,15 @@ pytest
 ```
 
 These tests mock MongoDB access so they can run without a live database.
+
+The FastAPI tests use `httpx` through `TestClient`, so that package must be installed as part of the Python dependencies.
+
+## Validation and Robustness
+
+- Ingestion validates the static asset configuration before fetching market data.
+- Market rows are sanitized before persistence to skip malformed or incomplete records.
+- The API returns `404` when assets or sources are missing and `500` for unexpected repository failures.
+- Ingestion continues past per-asset download failures and per-row insert failures instead of stopping the full run.
 
 ## Example API Endpoints
 
