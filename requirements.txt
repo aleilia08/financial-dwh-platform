@@ -8,3 +8,4 @@ requests
 pyspark
 scikit-learn
 yfinance 
+pytest

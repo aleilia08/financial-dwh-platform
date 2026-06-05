@@ -1,24 +1,45 @@
+from datetime import datetime
+
+from app.dal import analytics_repository as analytics_repository_module
 from app.dal.analytics_repository import AnalyticsRepository
+from tests_support import FakeCollection, FakeDatabase
 
-repo = AnalyticsRepository()
 
-sample_result = {
-    "asset_id": "AAPL",
+def test_save_analytics_result_adds_timestamp_and_returns_id(monkeypatch):
+    collection = FakeCollection(inserted_id="analytics-1")
+    monkeypatch.setattr(
+        analytics_repository_module,
+        "db",
+        FakeDatabase({"analytics_results": collection})
+    )
 
-    "analysis_type": "trend_summary",
+    repo = AnalyticsRepository()
+    payload = {"asset_id": "AAPL", "analysis_type": "trend_summary"}
 
-    "results": {
-        "avg_close": 210.3,
-        "max_close": 230.1,
-        "trend_percent": 7.2
-    }
-}
+    inserted_id = repo.save_analytics_result(payload)
 
-inserted_id = repo.save_analytics_result(sample_result)
+    assert inserted_id == "analytics-1"
+    assert len(collection.inserted_documents) == 1
+    assert collection.inserted_documents[0]["asset_id"] == "AAPL"
+    assert isinstance(collection.inserted_documents[0]["created_at"], datetime)
 
-print("Inserted analytics result id:", inserted_id)
 
-results = repo.get_analytics_by_asset("AAPL")
+def test_get_analytics_by_asset_returns_documents(monkeypatch):
+    collection = FakeCollection(
+        find_result=[
+            {"asset_id": "AAPL", "avg_close": 210.3},
+            {"asset_id": "AAPL", "avg_close": 211.7}
+        ]
+    )
+    monkeypatch.setattr(
+        analytics_repository_module,
+        "db",
+        FakeDatabase({"analytics_results": collection})
+    )
 
-print("\nAnalytics results:")
-print(results)
+    repo = AnalyticsRepository()
+
+    assert repo.get_analytics_by_asset("AAPL") == [
+        {"asset_id": "AAPL", "avg_close": 210.3},
+        {"asset_id": "AAPL", "avg_close": 211.7}
+    ]

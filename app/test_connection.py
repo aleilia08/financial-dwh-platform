@@ -1,9 +1,13 @@
-from pymongo import MongoClient
-from app.config import MONGODB_URI, DATABASE_NAME
+import importlib
 
-client = MongoClient(MONGODB_URI)
+from app import config as config_module
 
-db = client[DATABASE_NAME]
 
-print("Connected successfully!")
-print("Database:", db.name)
+def test_config_reads_environment(monkeypatch):
+	monkeypatch.setenv("MONGODB_URI", "mongodb://example:27017")
+	monkeypatch.setenv("DATABASE_NAME", "financial_dwh_test")
+
+	module = importlib.reload(config_module)
+
+	assert module.MONGODB_URI == "mongodb://example:27017"
+	assert module.DATABASE_NAME == "financial_dwh_test"
